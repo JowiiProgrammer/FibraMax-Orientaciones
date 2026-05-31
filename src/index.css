@@ -1,0 +1,78 @@
+/* Google Fonts — cargar en producción o manualmente en desarrollo */
+/* @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&display=swap'); */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 8%;
+    --foreground: 0 0% 98%;
+    --card: 0 0% 12%;
+    --card-foreground: 0 0% 98%;
+    --primary: 352 82% 47%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 0 0% 18%;
+    --secondary-foreground: 0 0% 80%;
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 55%;
+    --accent: 0 0% 20%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 20%;
+    --input: 0 0% 16%;
+    --ring: 352 82% 47%;
+    --success: 142 71% 45%;
+    --warning: 38 92% 50%;
+    --info: 200 80% 50%;
+    --sidebar: 0 0% 6%;
+    --radius: 0.5rem;
+  }
+
+  * {
+    @apply border-border box-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Inter', sans-serif;
+    margin: 0;
+  }
+
+  #root {
+    min-height: 100svh;
+  }
+}
+
+@layer components {
+  .fibra-card {
+    @apply bg-card border border-border rounded-lg;
+  }
+
+  .fibra-glow {
+    box-shadow: 0 0 20px hsl(352 82% 47% / 0.15);
+  }
+}
+
+@layer utilities {
+  .font-display {
+    font-family: 'Bebas Neue', sans-serif;
+    letter-spacing: 0.05em;
+  }
+
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--border)) transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: hsl(var(--border));
+    border-radius: 2px;
+  }
+}
