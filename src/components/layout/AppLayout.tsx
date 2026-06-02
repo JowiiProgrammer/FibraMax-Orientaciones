@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { NavLink } from 'react-router-dom'
-import { Calendar, LayoutDashboard, Users, Menu, X, Dumbbell, Bell, Settings, BarChart2 } from 'lucide-react'
+import { Calendar, LayoutDashboard, Users, Menu, X, Dumbbell, Bell, Settings, BarChart2, Activity } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useOrientationStore } from '@/store/orientations-store'
 
@@ -9,6 +9,7 @@ const nav = [
   { to: '/orientaciones', label: 'Orientaciones', icon: Calendar },
   { to: '/monitores', label: 'Monitores', icon: Users },
   { to: '/informes', label: 'Informes', icon: BarChart2 },
+  { to: '/actividad', label: 'Actividad', icon: Activity },
   { to: '/configuracion', label: 'Configuración', icon: Settings },
 ]
 
