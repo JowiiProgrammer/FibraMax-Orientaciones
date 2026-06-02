@@ -1,4 +1,13 @@
-# Logs
+# ── Secrets — NEVER commit these ─────────────────────────────────
+.env
+.env.local
+.env.*.local
+.env.development
+.env.production
+.env.staging
+*.env
+
+# ── Logs ──────────────────────────────────────────────────────────
 logs
 *.log
 npm-debug.log*
@@ -7,12 +16,12 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# ── Build output ──────────────────────────────────────────────────
 node_modules
 dist
 dist-ssr
-*.local
 
-# Editor directories and files
+# ── Editor ────────────────────────────────────────────────────────
 .vscode/*
 !.vscode/extensions.json
 .idea
@@ -23,4 +32,5 @@ dist-ssr
 *.sln
 *.sw?
 
+# ── Deploy ────────────────────────────────────────────────────────
 .vercel

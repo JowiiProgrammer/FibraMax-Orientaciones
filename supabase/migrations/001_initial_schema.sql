@@ -1,6 +1,6 @@
 -- ════════════════════════════════════════════════════════════════════
 -- FibraMax Orientaciones — Schema inicial
--- Ejecutar en: supabase.com/dashboard/project/trhoxscxatxgrtyfefby/sql
+-- Ejecutar en: Supabase Dashboard → SQL Editor del proyecto
 -- ════════════════════════════════════════════════════════════════════
 
 -- ── Enums ─────────────────────────────────────────────────────────────

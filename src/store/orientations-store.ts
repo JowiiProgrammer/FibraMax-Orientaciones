@@ -2,6 +2,10 @@ import { createContext, useContext, createElement } from 'react'
 import type { ReactNode } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/integrations/supabase/client'
+import {
+  orientationInsertSchema, tourInsertSchema, feedbackSchema,
+  monitorSchema, centerSchema, uuidSchema, validateOrThrow,
+} from '@/lib/validation'
 import type { Orientation, OrientationStatus, Tour, Monitor, Center } from '@/lib/types'
 import type { DbOrientation, DbTour, DbMonitor, DbCenter } from '@/integrations/supabase/db.types'
 
@@ -147,31 +151,34 @@ export function OrientationsProvider({ children }: { children: ReactNode }) {
 
   // ── Orientaciones ──────────────────────────────────────────────────
   const addOrientation = async (o: Omit<Orientation, 'id' | 'createdAt'>) => {
+    const v = validateOrThrow(orientationInsertSchema, o)
     const { error } = await supabase.from('orientations').insert({
-      subscriber_name: o.subscriberName,
-      monitor_id: o.monitorId,
-      date: o.date,
-      start_time: o.startTime,
-      end_time: o.endTime,
-      status: o.status,
-      service_type: o.serviceType,
-      notes: o.notes ?? null,
+      subscriber_name: v.subscriberName,
+      monitor_id: v.monitorId,
+      date: v.date,
+      start_time: v.startTime,
+      end_time: v.endTime,
+      status: v.status,
+      service_type: v.serviceType,
+      notes: v.notes ?? null,
     })
     if (error) throw error
     qc.invalidateQueries({ queryKey: ['orientations'] })
   }
 
   const updateOrientation = async (o: Orientation) => {
+    const id = validateOrThrow(uuidSchema, o.id)
+    const v = validateOrThrow(orientationInsertSchema, o)
     const { error } = await supabase.from('orientations').update({
-      subscriber_name: o.subscriberName,
-      monitor_id: o.monitorId,
-      date: o.date,
-      start_time: o.startTime,
-      end_time: o.endTime,
-      status: o.status,
-      service_type: o.serviceType,
-      notes: o.notes ?? null,
-    }).eq('id', o.id)
+      subscriber_name: v.subscriberName,
+      monitor_id: v.monitorId,
+      date: v.date,
+      start_time: v.startTime,
+      end_time: v.endTime,
+      status: v.status,
+      service_type: v.serviceType,
+      notes: v.notes ?? null,
+    }).eq('id', id)
     if (error) throw error
     qc.invalidateQueries({ queryKey: ['orientations'] })
   }
@@ -183,23 +190,28 @@ export function OrientationsProvider({ children }: { children: ReactNode }) {
   }
 
   const deleteOrientation = async (id: string) => {
-    const { error } = await supabase.from('orientations').delete().eq('id', id)
+    const safeId = validateOrThrow(uuidSchema, id)
+    const { error } = await supabase.from('orientations').delete().eq('id', safeId)
     if (error) throw error
     qc.invalidateQueries({ queryKey: ['orientations'] })
   }
 
   // ── Feedback ───────────────────────────────────────────────────────
   const saveFeedback = async (orientationId: string, rating: number, comment?: string) => {
+    const safeId = validateOrThrow(uuidSchema, orientationId)
+    const v = validateOrThrow(feedbackSchema, { rating, comment })
     const { error } = await supabase.from('orientation_feedback').upsert({
-      orientation_id: orientationId, rating, comment: comment ?? null,
+      orientation_id: safeId, rating: v.rating, comment: v.comment ?? null,
     }, { onConflict: 'orientation_id' })
     if (error) throw error
     qc.invalidateQueries({ queryKey: ['orientations'] })
   }
 
   const saveTourFeedback = async (tourId: string, rating: number, comment?: string) => {
+    const safeId = validateOrThrow(uuidSchema, tourId)
+    const v = validateOrThrow(feedbackSchema, { rating, comment })
     const { error } = await supabase.from('tour_feedback').upsert({
-      tour_id: tourId, rating, comment: comment ?? null,
+      tour_id: safeId, rating: v.rating, comment: v.comment ?? null,
     }, { onConflict: 'tour_id' })
     if (error) throw error
     qc.invalidateQueries({ queryKey: ['tours'] })
@@ -207,61 +219,71 @@ export function OrientationsProvider({ children }: { children: ReactNode }) {
 
   // ── Tours ──────────────────────────────────────────────────────────
   const addTour = async (t: Omit<Tour, 'id' | 'createdAt'>) => {
+    const v = validateOrThrow(tourInsertSchema, t)
     const { error } = await supabase.from('tours').insert({
-      monitor_id: t.monitorId, date: t.date, notes: t.notes ?? null,
+      monitor_id: v.monitorId, date: v.date, notes: v.notes ?? null,
     })
     if (error) throw error
     qc.invalidateQueries({ queryKey: ['tours'] })
   }
 
   const deleteTour = async (id: string) => {
-    const { error } = await supabase.from('tours').delete().eq('id', id)
+    const safeId = validateOrThrow(uuidSchema, id)
+    const { error } = await supabase.from('tours').delete().eq('id', safeId)
     if (error) throw error
     qc.invalidateQueries({ queryKey: ['tours'] })
   }
 
   // ── Monitores ──────────────────────────────────────────────────────
   const addMonitor = async (m: Omit<Monitor, 'id'>) => {
+    const v = validateOrThrow(monitorSchema, m)
     const { error } = await supabase.from('monitors').insert({
-      name: m.name, color: m.color, center_id: m.centerId,
+      name: v.name, color: v.color, center_id: v.centerId,
     })
     if (error) throw error
     qc.invalidateQueries({ queryKey: ['monitors'] })
   }
 
   const updateMonitor = async (m: Monitor) => {
+    const safeId = validateOrThrow(uuidSchema, m.id)
+    const v = validateOrThrow(monitorSchema, m)
     const { error } = await supabase.from('monitors').update({
-      name: m.name, color: m.color, center_id: m.centerId,
-    }).eq('id', m.id)
+      name: v.name, color: v.color, center_id: v.centerId,
+    }).eq('id', safeId)
     if (error) throw error
     qc.invalidateQueries({ queryKey: ['monitors'] })
   }
 
   const deleteMonitor = async (id: string) => {
-    const { error } = await supabase.from('monitors').delete().eq('id', id)
+    const safeId = validateOrThrow(uuidSchema, id)
+    const { error } = await supabase.from('monitors').delete().eq('id', safeId)
     if (error) throw error
     qc.invalidateQueries({ queryKey: ['monitors'] })
   }
 
   // ── Centros ────────────────────────────────────────────────────────
   const addCenter = async (c: Omit<Center, 'id'>) => {
+    const v = validateOrThrow(centerSchema, c)
     const { error } = await supabase.from('centers').insert({
-      name: c.name, color: c.color, short_code: c.shortCode,
+      name: v.name, color: v.color, short_code: v.shortCode,
     })
     if (error) throw error
     qc.invalidateQueries({ queryKey: ['centers'] })
   }
 
   const updateCenter = async (c: Center) => {
+    const safeId = validateOrThrow(uuidSchema, c.id)
+    const v = validateOrThrow(centerSchema, c)
     const { error } = await supabase.from('centers').update({
-      name: c.name, color: c.color, short_code: c.shortCode,
-    }).eq('id', c.id)
+      name: v.name, color: v.color, short_code: v.shortCode,
+    }).eq('id', safeId)
     if (error) throw error
     qc.invalidateQueries({ queryKey: ['centers'] })
   }
 
   const deleteCenter = async (id: string) => {
-    const { error } = await supabase.from('centers').delete().eq('id', id)
+    const safeId = validateOrThrow(uuidSchema, id)
+    const { error } = await supabase.from('centers').delete().eq('id', safeId)
     if (error) throw error
     qc.invalidateQueries({ queryKey: ['centers'] })
   }

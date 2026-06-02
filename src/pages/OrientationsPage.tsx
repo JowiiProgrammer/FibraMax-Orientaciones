@@ -8,6 +8,7 @@ import { OrientationForm } from '@/components/orientations/OrientationForm'
 import { OrientationDetail } from '@/components/orientations/OrientationDetail'
 import { WeekCalendar } from '@/components/orientations/WeekCalendar'
 import { useOrientationStore } from '@/store/orientations-store'
+import { logError } from '@/integrations/supabase/client'
 import type { Orientation, OrientationStatus } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
@@ -40,9 +41,9 @@ export function OrientationsPage() {
   function handleSave(data: Omit<Orientation, 'id' | 'createdAt'>) {
     if (editOrientation) {
       updateOrientation({ ...data, id: editOrientation.id, createdAt: editOrientation.createdAt })
-        .catch(console.error)
+        .catch(e => logError('updateOrientation', e))
     } else {
-      addOrientation(data).catch(console.error)
+      addOrientation(data).catch(e => logError('addOrientation', e))
     }
     setEditOrientation(undefined)
   }
