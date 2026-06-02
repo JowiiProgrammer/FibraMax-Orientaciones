@@ -1,15 +1,16 @@
 import { useState } from 'react'
 import { format } from 'date-fns'
-import { Route, Plus } from 'lucide-react'
+import { Route } from 'lucide-react'
 import { useOrientationStore } from '@/store/orientations-store'
 import { StatusBadge } from '@/components/ui/badge'
+import { StarRating } from '@/components/feedback/FeedbackModal'
 import { Button } from '@/components/ui/button'
 import { TourForm } from '@/components/tours/TourForm'
 import type { Monitor } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
 export function MonitoresPage() {
-  const { orientations, tours, addTour, deleteTour, monitors, centers } = useOrientationStore()
+  const { orientations, tours, addTour, deleteTour, saveTourFeedback, monitors, centers } = useOrientationStore()
   const today = format(new Date(), 'yyyy-MM-dd')
   const [tourModal, setTourModal] = useState<Monitor | null>(null)
 
@@ -55,6 +56,12 @@ export function MonitoresPage() {
               const completedOrientations = myOrientations.filter(o => o.status === 'completed').length
               const noShowCount = myOrientations.filter(o => o.status === 'no_show').length
 
+              // Rating promedio del monitor
+              const ratingsO = myOrientations.filter(o => o.feedback?.rating).map(o => o.feedback!.rating)
+              const ratingsT = tours.filter(t => t.monitorId === m.id && t.feedback?.rating).map(t => t.feedback!.rating)
+              const allRatings = [...ratingsO, ...ratingsT]
+              const avgRating = allRatings.length > 0 ? Math.round(allRatings.reduce((a, b) => a + b, 0) / allRatings.length) : 0
+
               return (
                 <div key={m.id} className="fibra-card overflow-hidden">
                   <div className="h-1 shrink-0" style={{ backgroundColor: m.color }} />
@@ -71,7 +78,10 @@ export function MonitoresPage() {
                         </div>
                         <div>
                           <p className="font-medium text-foreground text-sm">{m.name}</p>
-                          <p className="text-xs text-muted-foreground">{center.name}</p>
+                          <div className="flex items-center gap-2">
+                            <p className="text-xs text-muted-foreground">{center.name}</p>
+                            {avgRating > 0 && <StarRating rating={avgRating} />}
+                          </div>
                         </div>
                       </div>
                       {/* Botón tour rápido */}
@@ -145,6 +155,7 @@ export function MonitoresPage() {
         onClose={() => setTourModal(null)}
         onAddTour={addTour}
         onDeleteTour={deleteTour}
+        onSaveTourFeedback={saveTourFeedback}
       />
     </div>
   )

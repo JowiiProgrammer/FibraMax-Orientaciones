@@ -93,7 +93,7 @@ function CentersSettings() {
 
   function saveCreate() {
     if (!formName.trim() || !formCode.trim()) return
-    addCenter({ id: `c-${Date.now()}`, name: formName.trim(), color: formColor, shortCode: formCode.trim().toUpperCase().slice(0, 3) })
+    addCenter({ name: formName.trim(), color: formColor, shortCode: formCode.trim().toUpperCase().slice(0, 3) })
     cancel()
   }
 
@@ -244,7 +244,7 @@ function MonitorsSettings() {
     if (!formName.trim() || !formCenterId) return
     const center = getCenter(formCenterId)!
     addMonitor({
-      id: `m-${Date.now()}`, name: formName.trim(), color: formColor,
+      name: formName.trim(), color: formColor,
       centerId: center.id, centerName: center.name,
       centerColor: center.color, centerShortCode: center.shortCode,
     })

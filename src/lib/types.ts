@@ -20,7 +20,7 @@ export interface Monitor {
 
 export interface Orientation {
   id: string
-  subscriberName: string   // Texto libre — no se guarda en BD separada
+  subscriberName: string
   monitorId: string
   monitorName: string
   monitorColor: string
@@ -34,6 +34,7 @@ export interface Orientation {
   serviceType: ServiceType
   notes?: string
   createdAt: string
+  feedback?: Feedback | null
 }
 
 export const STATUS_CONFIG: Record<OrientationStatus, { label: string; className: string; dotColor: string }> = {
@@ -64,6 +65,13 @@ export const STATUS_CONFIG: Record<OrientationStatus, { label: string; className
   },
 }
 
+export interface Feedback {
+  id: string
+  rating: number      // 1-5
+  comment?: string | null
+  created_at: string
+}
+
 export interface Tour {
   id: string
   monitorId: string
@@ -73,8 +81,9 @@ export interface Tour {
   centerColor: string
   centerShortCode: string
   date: string        // YYYY-MM-DD
-  notes?: string      // opcional: "Grupo de 4 personas", "Tour zona libre"
+  notes?: string
   createdAt: string
+  feedback?: Feedback | null
 }
 
 export const SERVICE_CONFIG: Record<ServiceType, { label: string }> = {

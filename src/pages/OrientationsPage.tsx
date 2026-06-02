@@ -14,7 +14,7 @@ import { cn } from '@/lib/utils'
 type ViewMode = 'calendar' | 'list'
 
 export function OrientationsPage() {
-  const { orientations, addOrientation, updateOrientation, updateOrientationStatus, monitors, centers } = useOrientationStore()
+  const { orientations, addOrientation, updateOrientation, updateOrientationStatus, saveFeedback, monitors, centers } = useOrientationStore()
   const [view, setView] = useState<ViewMode>('calendar')
   const [currentWeek, setCurrentWeek] = useState(new Date())
   const [formOpen, setFormOpen] = useState(false)
@@ -40,8 +40,9 @@ export function OrientationsPage() {
   function handleSave(data: Omit<Orientation, 'id' | 'createdAt'>) {
     if (editOrientation) {
       updateOrientation({ ...data, id: editOrientation.id, createdAt: editOrientation.createdAt })
+        .catch(console.error)
     } else {
-      addOrientation({ ...data, id: `o-${Date.now()}`, createdAt: new Date().toISOString() })
+      addOrientation(data).catch(console.error)
     }
     setEditOrientation(undefined)
   }
@@ -183,6 +184,7 @@ export function OrientationsPage() {
         onCancel={id => updateOrientationStatus(id, 'cancelled')}
         onNoShow={id => updateOrientationStatus(id, 'no_show')}
         onEdit={o => { setEditOrientation(o); setFormOpen(true) }}
+        onSaveFeedback={saveFeedback}
       />
     </div>
   )
