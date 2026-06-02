@@ -1,6 +1,7 @@
 import { createContext, useContext, createElement } from 'react'
 import type { ReactNode } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { toast } from 'sonner'
 import { supabase } from '@/integrations/supabase/client'
 import {
   orientationInsertSchema, tourInsertSchema, feedbackSchema,
@@ -63,6 +64,23 @@ function toTour(t: DbTour): Tour {
     createdAt: t.created_at,
     feedback: t.tour_feedback ?? undefined,
   }
+}
+
+// ── Error handler — toast visible + log en dev ─────────────────────
+function handleError(context: string, err: unknown): never {
+  if (import.meta.env.DEV) console.error(`[${context}]`, err)
+  const msg = err instanceof Error ? err.message : String(err)
+  // Supabase RLS error
+  if (msg.includes('row-level security')) {
+    toast.error('Sin permiso para realizar esta acción.')
+  } else if (msg.includes('violates check constraint')) {
+    toast.error('Los datos no son válidos. Revisa el formulario.')
+  } else if (msg.includes('network') || msg.includes('Failed to fetch')) {
+    toast.error('Sin conexión. Comprueba tu internet.')
+  } else {
+    toast.error('Error al guardar. Inténtalo de nuevo.')
+  }
+  throw err
 }
 
 // ── Supabase fetchers ──────────────────────────────────────────────────
@@ -162,7 +180,8 @@ export function OrientationsProvider({ children }: { children: ReactNode }) {
       service_type: v.serviceType,
       notes: v.notes ?? null,
     })
-    if (error) throw error
+    if (error) handleError('addOrientation', error)
+    toast.success('Orientación agendada')
     qc.invalidateQueries({ queryKey: ['orientations'] })
   }
 
@@ -179,20 +198,21 @@ export function OrientationsProvider({ children }: { children: ReactNode }) {
       service_type: v.serviceType,
       notes: v.notes ?? null,
     }).eq('id', id)
-    if (error) throw error
+    if (error) handleError('updateOrientation', error)
+    toast.success('Orientación actualizada')
     qc.invalidateQueries({ queryKey: ['orientations'] })
   }
 
   const updateOrientationStatus = async (id: string, status: OrientationStatus) => {
     const { error } = await supabase.from('orientations').update({ status }).eq('id', id)
-    if (error) throw error
+    if (error) handleError('updateStatus', error)
     qc.invalidateQueries({ queryKey: ['orientations'] })
   }
 
   const deleteOrientation = async (id: string) => {
     const safeId = validateOrThrow(uuidSchema, id)
     const { error } = await supabase.from('orientations').delete().eq('id', safeId)
-    if (error) throw error
+    if (error) handleError('deleteOrientation', error)
     qc.invalidateQueries({ queryKey: ['orientations'] })
   }
 
@@ -203,7 +223,8 @@ export function OrientationsProvider({ children }: { children: ReactNode }) {
     const { error } = await supabase.from('orientation_feedback').upsert({
       orientation_id: safeId, rating: v.rating, comment: v.comment ?? null,
     }, { onConflict: 'orientation_id' })
-    if (error) throw error
+    if (error) handleError('saveFeedback', error)
+    toast.success('Valoración guardada')
     qc.invalidateQueries({ queryKey: ['orientations'] })
   }
 
@@ -213,7 +234,8 @@ export function OrientationsProvider({ children }: { children: ReactNode }) {
     const { error } = await supabase.from('tour_feedback').upsert({
       tour_id: safeId, rating: v.rating, comment: v.comment ?? null,
     }, { onConflict: 'tour_id' })
-    if (error) throw error
+    if (error) handleError('saveTourFeedback', error)
+    toast.success('Valoración guardada')
     qc.invalidateQueries({ queryKey: ['tours'] })
   }
 
@@ -223,14 +245,15 @@ export function OrientationsProvider({ children }: { children: ReactNode }) {
     const { error } = await supabase.from('tours').insert({
       monitor_id: v.monitorId, date: v.date, notes: v.notes ?? null,
     })
-    if (error) throw error
+    if (error) handleError('addTour', error)
+    toast.success('Tour registrado')
     qc.invalidateQueries({ queryKey: ['tours'] })
   }
 
   const deleteTour = async (id: string) => {
     const safeId = validateOrThrow(uuidSchema, id)
     const { error } = await supabase.from('tours').delete().eq('id', safeId)
-    if (error) throw error
+    if (error) handleError('deleteTour', error)
     qc.invalidateQueries({ queryKey: ['tours'] })
   }
 
@@ -240,7 +263,8 @@ export function OrientationsProvider({ children }: { children: ReactNode }) {
     const { error } = await supabase.from('monitors').insert({
       name: v.name, color: v.color, center_id: v.centerId,
     })
-    if (error) throw error
+    if (error) handleError('addMonitor', error)
+    toast.success('Monitor añadido')
     qc.invalidateQueries({ queryKey: ['monitors'] })
   }
 
@@ -250,14 +274,15 @@ export function OrientationsProvider({ children }: { children: ReactNode }) {
     const { error } = await supabase.from('monitors').update({
       name: v.name, color: v.color, center_id: v.centerId,
     }).eq('id', safeId)
-    if (error) throw error
+    if (error) handleError('updateMonitor', error)
+    toast.success('Monitor actualizado')
     qc.invalidateQueries({ queryKey: ['monitors'] })
   }
 
   const deleteMonitor = async (id: string) => {
     const safeId = validateOrThrow(uuidSchema, id)
     const { error } = await supabase.from('monitors').delete().eq('id', safeId)
-    if (error) throw error
+    if (error) handleError('deleteMonitor', error)
     qc.invalidateQueries({ queryKey: ['monitors'] })
   }
 
@@ -267,7 +292,8 @@ export function OrientationsProvider({ children }: { children: ReactNode }) {
     const { error } = await supabase.from('centers').insert({
       name: v.name, color: v.color, short_code: v.shortCode,
     })
-    if (error) throw error
+    if (error) handleError('addCenter', error)
+    toast.success('Centro añadido')
     qc.invalidateQueries({ queryKey: ['centers'] })
   }
 
@@ -277,14 +303,15 @@ export function OrientationsProvider({ children }: { children: ReactNode }) {
     const { error } = await supabase.from('centers').update({
       name: v.name, color: v.color, short_code: v.shortCode,
     }).eq('id', safeId)
-    if (error) throw error
+    if (error) handleError('updateCenter', error)
+    toast.success('Centro actualizado')
     qc.invalidateQueries({ queryKey: ['centers'] })
   }
 
   const deleteCenter = async (id: string) => {
     const safeId = validateOrThrow(uuidSchema, id)
     const { error } = await supabase.from('centers').delete().eq('id', safeId)
-    if (error) throw error
+    if (error) handleError('deleteCenter', error)
     qc.invalidateQueries({ queryKey: ['centers'] })
   }
 
