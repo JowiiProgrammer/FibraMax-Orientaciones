@@ -1,11 +1,19 @@
 import { useState, useMemo } from 'react'
 import { format, startOfMonth, endOfMonth, isWithinInterval, parseISO, addMonths, subMonths } from 'date-fns'
 import { es } from 'date-fns/locale'
-import { Download, ChevronLeft, ChevronRight, BarChart2, TrendingUp, Users, Route } from 'lucide-react'
+import { Download, ChevronLeft, ChevronRight, BarChart2, TrendingUp, Users, Route, Star, MessageSquare } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { StarRating } from '@/components/feedback/FeedbackModal'
 import { useOrientationStore } from '@/store/orientations-store'
 import { generateMonthlyPDF } from '@/lib/report'
 import { cn } from '@/lib/utils'
+import type { Feedback } from '@/lib/types'
+
+// Media y conteo de valoraciones a partir de una lista de feedbacks (con huecos)
+function ratingOf(fbs: (Feedback | null | undefined)[]) {
+  const r = fbs.filter((f): f is Feedback => Boolean(f))
+  return { avg: r.length ? r.reduce((s, f) => s + f.rating, 0) / r.length : 0, count: r.length }
+}
 
 export function ReportePage() {
   const { orientations, tours, monitors, centers } = useOrientationStore()
@@ -31,6 +39,32 @@ export function ReportePage() {
   const cancelled = monthOrientations.filter(o => o.status === 'cancelled').length
   const rate = total > 0 ? Math.round((completed / total) * 100) : 0
 
+  // ── Valoraciones (feedback) ──────────────────────────────────────────────────
+  const feedbackStats = useMemo(() => {
+    const oFb = ratingOf(monthOrientations.map(o => o.feedback))
+    const tFb = ratingOf(monthTours.map(t => t.feedback))
+    const ratedSessions = oFb.count + tFb.count
+    const totalSessions = monthOrientations.length + monthTours.length
+    return {
+      orientationAvg: oFb.avg, orientationCount: oFb.count,
+      tourAvg: tFb.avg, tourCount: tFb.count,
+      ratedSessions,
+      coverage: totalSessions > 0 ? Math.round((ratedSessions / totalSessions) * 100) : 0,
+    }
+  }, [monthOrientations, monthTours])
+
+  // ── Comentarios del mes ──────────────────────────────────────────────────────
+  const comments = useMemo(() => {
+    const items: { key: string; type: 'orientation' | 'tour'; who: string; monitor: string; rating: number; comment: string; date: string }[] = []
+    for (const o of monthOrientations) {
+      if (o.feedback?.comment) items.push({ key: `o-${o.id}`, type: 'orientation', who: o.subscriberName, monitor: o.monitorName, rating: o.feedback.rating, comment: o.feedback.comment, date: o.date })
+    }
+    for (const t of monthTours) {
+      if (t.feedback?.comment) items.push({ key: `t-${t.id}`, type: 'tour', who: 'Tour', monitor: t.monitorName, rating: t.feedback.rating, comment: t.feedback.comment, date: t.date })
+    }
+    return items.sort((a, b) => b.date.localeCompare(a.date))
+  }, [monthOrientations, monthTours])
+
   // ── Por centro ─────────────────────────────────────────────────────────────
   const centerStats = useMemo(() => centers.map(c => {
     const cO = monthOrientations.filter(o => o.centerName === c.name)
@@ -38,7 +72,8 @@ export function ReportePage() {
     const cCompleted = cO.filter(o => o.status === 'completed').length
     const cNoShow = cO.filter(o => o.status === 'no_show').length
     const cRate = cO.length > 0 ? Math.round((cCompleted / cO.length) * 100) : 0
-    return { center: c, total: cO.length, completed: cCompleted, noShow: cNoShow, tours: cT.length, rate: cRate }
+    const cFb = ratingOf([...cO.map(o => o.feedback), ...cT.map(t => t.feedback)])
+    return { center: c, total: cO.length, completed: cCompleted, noShow: cNoShow, tours: cT.length, rate: cRate, rating: cFb.avg, ratingCount: cFb.count }
   }).filter(r => r.total > 0 || r.tours > 0), [centers, monthOrientations, monthTours])
 
   // ── Por monitor ────────────────────────────────────────────────────────────
@@ -48,7 +83,8 @@ export function ReportePage() {
     const mCompleted = mO.filter(o => o.status === 'completed').length
     const mNoShow = mO.filter(o => o.status === 'no_show').length
     const mRate = mO.length > 0 ? Math.round((mCompleted / mO.length) * 100) : 0
-    return { monitor: m, total: mO.length, completed: mCompleted, noShow: mNoShow, tours: mT.length, rate: mRate }
+    const mFb = ratingOf([...mO.map(o => o.feedback), ...mT.map(t => t.feedback)])
+    return { monitor: m, total: mO.length, completed: mCompleted, noShow: mNoShow, tours: mT.length, rate: mRate, rating: mFb.avg, ratingCount: mFb.count }
   }).filter(r => r.total > 0 || r.tours > 0)
     .sort((a, b) => b.total - a.total), [monitors, monthOrientations, monthTours])
 
@@ -135,6 +171,39 @@ export function ReportePage() {
             </div>
           </div>
 
+          {/* Valoraciones */}
+          <div>
+            <h2 className="font-display text-lg text-foreground mb-3 flex items-center gap-2">
+              <Star className="w-5 h-5 text-warning fill-warning" /> VALORACIONES
+            </h2>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {[
+                { label: 'Media orientaciones', avg: feedbackStats.orientationAvg, count: feedbackStats.orientationCount },
+                { label: 'Media tours', avg: feedbackStats.tourAvg, count: feedbackStats.tourCount },
+              ].map(s => (
+                <div key={s.label} className="fibra-card p-4 text-center space-y-1">
+                  {s.count > 0 ? (
+                    <>
+                      <p className="text-2xl font-display text-warning">{s.avg.toFixed(1)}</p>
+                      <div className="flex justify-center"><StarRating rating={Math.round(s.avg)} size="md" /></div>
+                    </>
+                  ) : (
+                    <p className="text-2xl font-display text-muted-foreground/40">—</p>
+                  )}
+                  <p className="text-xs text-muted-foreground">{s.label}{s.count > 0 ? ` · ${s.count}` : ''}</p>
+                </div>
+              ))}
+              <div className="fibra-card p-4 text-center space-y-1">
+                <p className="text-2xl font-display text-foreground">{feedbackStats.ratedSessions}</p>
+                <p className="text-xs text-muted-foreground">Sesiones valoradas</p>
+              </div>
+              <div className="fibra-card p-4 text-center space-y-1">
+                <p className="text-2xl font-display text-primary">{feedbackStats.coverage}%</p>
+                <p className="text-xs text-muted-foreground">Cobertura feedback</p>
+              </div>
+            </div>
+          </div>
+
           {/* Por centro */}
           {centerStats.length > 0 && (
             <div>
@@ -149,10 +218,11 @@ export function ReportePage() {
                       <th className="text-center px-3 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">No vinieron</th>
                       <th className="text-center px-3 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Tours</th>
                       <th className="text-center px-3 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Tasa</th>
+                      <th className="text-center px-3 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Valoración</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
-                    {centerStats.map(({ center, total, completed, noShow, tours, rate }) => (
+                    {centerStats.map(({ center, total, completed, noShow, tours, rate, rating, ratingCount }) => (
                       <tr key={center.id} className="hover:bg-accent/30 transition-colors">
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-2.5">
@@ -172,6 +242,9 @@ export function ReportePage() {
                         <td className="px-3 py-3 text-center text-info">{tours}</td>
                         <td className="px-3 py-3 text-center">
                           <RateBar rate={rate} />
+                        </td>
+                        <td className="px-3 py-3 text-center">
+                          <RatingCell avg={rating} count={ratingCount} />
                         </td>
                       </tr>
                     ))}
@@ -196,10 +269,11 @@ export function ReportePage() {
                       <th className="text-center px-3 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider hidden md:table-cell">No vinieron</th>
                       <th className="text-center px-3 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Tours</th>
                       <th className="text-center px-3 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Tasa</th>
+                      <th className="text-center px-3 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Valoración</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
-                    {monitorStats.map(({ monitor, total, completed, noShow, tours, rate }) => (
+                    {monitorStats.map(({ monitor, total, completed, noShow, tours, rate, rating, ratingCount }) => (
                       <tr key={monitor.id} className="hover:bg-accent/30 transition-colors">
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-2.5">
@@ -230,6 +304,9 @@ export function ReportePage() {
                         <td className="px-3 py-3 text-center">
                           <RateBar rate={rate} />
                         </td>
+                        <td className="px-3 py-3 text-center">
+                          <RatingCell avg={rating} count={ratingCount} />
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -237,8 +314,45 @@ export function ReportePage() {
               </div>
             </div>
           )}
+
+          {/* Comentarios */}
+          {comments.length > 0 && (
+            <div>
+              <h2 className="font-display text-lg text-foreground mb-3 flex items-center gap-2">
+                <MessageSquare className="w-5 h-5 text-primary" /> COMENTARIOS
+              </h2>
+              <div className="space-y-2">
+                {comments.map(c => (
+                  <div key={c.key} className="fibra-card p-3 flex items-start gap-3">
+                    <div className="shrink-0 mt-0.5">
+                      <StarRating rating={c.rating} />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm text-foreground">{c.comment}</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        <span className="font-medium text-foreground/80">{c.who}</span>
+                        {' · '}{c.monitor}
+                        {' · '}{format(parseISO(c.date), "d MMM", { locale: es })}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </>
       )}
+    </div>
+  )
+}
+
+function RatingCell({ avg, count }: { avg: number; count: number }) {
+  if (count === 0) return <span className="text-xs text-muted-foreground/40">—</span>
+  return (
+    <div className="flex items-center gap-1.5 justify-center">
+      <StarRating rating={Math.round(avg)} />
+      <span className="text-xs font-medium text-foreground tabular-nums">{avg.toFixed(1)}</span>
+      <span className="text-[10px] text-muted-foreground">({count})</span>
     </div>
   )
 }

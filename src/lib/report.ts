@@ -2,7 +2,7 @@ import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import { format, startOfMonth, endOfMonth, isWithinInterval, parseISO } from 'date-fns'
 import { es } from 'date-fns/locale'
-import type { Orientation, Tour, Monitor, Center } from './types'
+import type { Orientation, Tour, Monitor, Center, Feedback } from './types'
 
 // Colores corporativos FibraMax
 const FIBRA_RED   = [223, 62, 111] as [number, number, number]
@@ -38,6 +38,12 @@ function toursInMonth(tours: Tour[], month: Date) {
       return isWithinInterval(parseISO(t.date), { start, end })
     } catch { return false }
   })
+}
+
+// Media y conteo de valoraciones a partir de una lista de feedbacks (con huecos)
+function ratingOf(fbs: (Feedback | null | undefined)[]) {
+  const r = fbs.filter((f): f is Feedback => Boolean(f))
+  return { avg: r.length ? r.reduce((s, f) => s + f.rating, 0) / r.length : 0, count: r.length }
 }
 
 export function generateMonthlyPDF({ month, orientations, tours, monitors, centers }: MonthlyReportData) {
@@ -117,6 +123,42 @@ export function generateMonthlyPDF({ month, orientations, tours, monitors, cente
 
   y += 26
 
+  // ── VALORACIONES ──────────────────────────────────────────────────────────
+  const oFb = ratingOf(monthOrientations.map(o => o.feedback))
+  const tFb = ratingOf(monthTours.map(t => t.feedback))
+  const ratedSessions = oFb.count + tFb.count
+  const totalSessions = monthOrientations.length + monthTours.length
+  const coverage = totalSessions > 0 ? Math.round((ratedSessions / totalSessions) * 100) : 0
+
+  doc.setFontSize(11)
+  doc.setFont('helvetica', 'bold')
+  doc.setTextColor(...TEXT_DARK)
+  doc.text('VALORACIONES', 14, y)
+  y += 6
+
+  const ratingCards = [
+    { label: 'Media orientaciones', value: oFb.count ? `${oFb.avg.toFixed(1)} / 5` : '—' },
+    { label: 'Media tours',         value: tFb.count ? `${tFb.avg.toFixed(1)} / 5` : '—' },
+    { label: 'Valoraciones',        value: String(ratedSessions) },
+    { label: 'Cobertura feedback',  value: `${coverage}%` },
+  ]
+  const rCardW = (210 - 28 - 3 * 4) / 4  // 4 tarjetas con gaps
+  ratingCards.forEach((card, i) => {
+    const x = 14 + i * (rCardW + 4)
+    doc.setFillColor(...GRAY_LIGHT)
+    doc.roundedRect(x, y, rCardW, 18, 2, 2, 'F')
+    doc.setFontSize(13)
+    doc.setFont('helvetica', 'bold')
+    doc.setTextColor(...FIBRA_RED)
+    doc.text(card.value, x + rCardW / 2, y + 9, { align: 'center' })
+    doc.setFontSize(7)
+    doc.setFont('helvetica', 'normal')
+    doc.setTextColor(100, 100, 100)
+    doc.text(card.label, x + rCardW / 2, y + 15, { align: 'center' })
+  })
+
+  y += 26
+
   // ── TABLA POR CENTRO ──────────────────────────────────────────────────────
   doc.setFontSize(11)
   doc.setFont('helvetica', 'bold')
@@ -130,16 +172,18 @@ export function generateMonthlyPDF({ month, orientations, tours, monitors, cente
     const cCompleted = cOrient.filter(o => o.status === 'completed').length
     const cNoShow = cOrient.filter(o => o.status === 'no_show').length
     const cRate = cOrient.length > 0 ? Math.round((cCompleted / cOrient.length) * 100) : 0
-    return [c.name, c.shortCode, String(cOrient.length), String(cCompleted), String(cNoShow), String(cTours.length), `${cRate}%`]
+    const cFb = ratingOf([...cOrient.map(o => o.feedback), ...cTours.map(t => t.feedback)])
+    const cRating = cFb.count ? `${cFb.avg.toFixed(1)} (${cFb.count})` : '—'
+    return [c.name, c.shortCode, String(cOrient.length), String(cCompleted), String(cNoShow), String(cTours.length), `${cRate}%`, cRating]
   }).filter(r => parseInt(r[2]) > 0 || parseInt(r[5]) > 0)
 
   if (centerRows.length === 0) {
-    centerRows.push(['Sin datos para este mes', '', '0', '0', '0', '0', '—'])
+    centerRows.push(['Sin datos para este mes', '', '0', '0', '0', '0', '—', '—'])
   }
 
   autoTable(doc, {
     startY: y,
-    head: [['Centro', 'Cód.', 'Orientaciones', 'Completadas', 'No vinieron', 'Tours', 'Tasa']],
+    head: [['Centro', 'Cód.', 'Orientaciones', 'Completadas', 'No vinieron', 'Tours', 'Tasa', 'Valoración']],
     body: centerRows,
     styles: { fontSize: 9, cellPadding: 3 },
     headStyles: {
@@ -157,6 +201,7 @@ export function generateMonthlyPDF({ month, orientations, tours, monitors, cente
       4: { halign: 'center' },
       5: { halign: 'center' },
       6: { halign: 'center', fontStyle: 'bold', textColor: FIBRA_RED },
+      7: { halign: 'center' },
     },
     margin: { left: 14, right: 14 },
   })
@@ -182,17 +227,19 @@ export function generateMonthlyPDF({ month, orientations, tours, monitors, cente
     const mCompleted = mOrient.filter(o => o.status === 'completed').length
     const mNoShow = mOrient.filter(o => o.status === 'no_show').length
     const mRate = mOrient.length > 0 ? Math.round((mCompleted / mOrient.length) * 100) : 0
-    return [m.name, m.centerName, String(mOrient.length), String(mCompleted), String(mNoShow), String(mTours.length), `${mRate}%`]
+    const mFb = ratingOf([...mOrient.map(o => o.feedback), ...mTours.map(t => t.feedback)])
+    const mRating = mFb.count ? `${mFb.avg.toFixed(1)} (${mFb.count})` : '—'
+    return [m.name, m.centerName, String(mOrient.length), String(mCompleted), String(mNoShow), String(mTours.length), `${mRate}%`, mRating]
   }).filter(r => parseInt(r[2]) > 0 || parseInt(r[5]) > 0)
     .sort((a, b) => parseInt(b[2]) - parseInt(a[2]))  // ordenar por más orientaciones
 
   if (monitorRows.length === 0) {
-    monitorRows.push(['Sin datos para este mes', '', '0', '0', '0', '0', '—'])
+    monitorRows.push(['Sin datos para este mes', '', '0', '0', '0', '0', '—', '—'])
   }
 
   autoTable(doc, {
     startY: y,
-    head: [['Monitor', 'Centro', 'Orientaciones', 'Completadas', 'No vinieron', 'Tours', 'Tasa']],
+    head: [['Monitor', 'Centro', 'Orientaciones', 'Completadas', 'No vinieron', 'Tours', 'Tasa', 'Valoración']],
     body: monitorRows,
     styles: { fontSize: 9, cellPadding: 3 },
     headStyles: {
@@ -210,9 +257,54 @@ export function generateMonthlyPDF({ month, orientations, tours, monitors, cente
       4: { halign: 'center' },
       5: { halign: 'center' },
       6: { halign: 'center', fontStyle: 'bold', textColor: FIBRA_RED },
+      7: { halign: 'center' },
     },
     margin: { left: 14, right: 14 },
   })
+
+  y = (doc as any).lastAutoTable.finalY + 10
+
+  // ── COMENTARIOS DEL MES ───────────────────────────────────────────────────
+  const commentRows: string[][] = []
+  monthOrientations.forEach(o => {
+    if (o.feedback?.comment) {
+      commentRows.push([`${o.subscriberName} · ${o.monitorName}`, `${o.feedback.rating}/5`, o.feedback.comment])
+    }
+  })
+  monthTours.forEach(t => {
+    if (t.feedback?.comment) {
+      commentRows.push([`Tour · ${t.monitorName}`, `${t.feedback.rating}/5`, t.feedback.comment])
+    }
+  })
+
+  if (commentRows.length > 0) {
+    if (y > 240) { doc.addPage(); y = 20 }
+    doc.setFontSize(11)
+    doc.setFont('helvetica', 'bold')
+    doc.setTextColor(...TEXT_DARK)
+    doc.text('COMENTARIOS', 14, y)
+    y += 4
+
+    autoTable(doc, {
+      startY: y,
+      head: [['Sesión', 'Val.', 'Comentario']],
+      body: commentRows,
+      styles: { fontSize: 9, cellPadding: 3, valign: 'top' },
+      headStyles: {
+        fillColor: DARK_BG,
+        textColor: WHITE,
+        fontStyle: 'bold',
+        fontSize: 9,
+      },
+      alternateRowStyles: { fillColor: GRAY_LIGHT },
+      columnStyles: {
+        0: { fontStyle: 'bold', cellWidth: 55 },
+        1: { halign: 'center', cellWidth: 18, textColor: FIBRA_RED, fontStyle: 'bold' },
+        2: { cellWidth: 'auto' },
+      },
+      margin: { left: 14, right: 14 },
+    })
+  }
 
   // ── PIE DE PÁGINA ─────────────────────────────────────────────────────────
   const pageCount = doc.getNumberOfPages()
