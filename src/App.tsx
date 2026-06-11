@@ -13,9 +13,13 @@ import { ActividadPage } from '@/pages/ActividadPage'
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 30_000,
+      staleTime: 10_000,
       retry: 1,
-      refetchOnWindowFocus: true,
+      // Auto-refresh: los datos se actualizan solos, sin recargar la página.
+      refetchOnWindowFocus: true,   // al volver a la pestaña
+      refetchOnReconnect: true,     // al recuperar conexión
+      refetchInterval: 15_000,      // sondeo en segundo plano (cambios de otros equipos)
+      refetchIntervalInBackground: false,
     },
   },
 })

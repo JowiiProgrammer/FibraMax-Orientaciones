@@ -159,7 +159,7 @@ export function OrientationDetail({
                   </Button>
                 )}
                 <Button variant="outline" size="sm" className="w-full" onClick={() => { onEdit(o); onClose() }}>
-                  <RotateCcw className="w-4 h-4" /> Editar
+                  <RotateCcw className="w-4 h-4" /> Editar notas
                 </Button>
               </div>
             )}
