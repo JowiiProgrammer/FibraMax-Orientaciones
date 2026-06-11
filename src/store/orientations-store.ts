@@ -1,4 +1,4 @@
-import { createContext, useContext, createElement } from 'react'
+import { createContext, useContext, createElement, useEffect } from 'react'
 import type { ReactNode } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
@@ -166,6 +166,24 @@ export function OrientationsProvider({ children }: { children: ReactNode }) {
   const { data: centers     = [], isLoading: loadC } = useQuery({ queryKey: ['centers'],      queryFn: fetchCenters })
 
   const isLoading = loadO || loadT || loadM || loadC
+
+  // ── Realtime ───────────────────────────────────────────────────────
+  // Refresca al instante cuando cambian los datos (desde cualquier dispositivo).
+  // Requiere que las tablas estén en la publicación `supabase_realtime`. Si no lo
+  // están, no llegan eventos y el polling de React Query sigue cubriendo la
+  // actualización — por lo que esto es seguro de desplegar aunque Realtime esté off.
+  useEffect(() => {
+    const channel = supabase
+      .channel('db-orientaciones')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orientations' },        () => qc.invalidateQueries({ queryKey: ['orientations'] }))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orientation_feedback' }, () => qc.invalidateQueries({ queryKey: ['orientations'] }))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tours' },                () => qc.invalidateQueries({ queryKey: ['tours'] }))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tour_feedback' },         () => qc.invalidateQueries({ queryKey: ['tours'] }))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'monitors' },              () => qc.invalidateQueries({ queryKey: ['monitors'] }))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'centers' },               () => qc.invalidateQueries({ queryKey: ['centers'] }))
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [qc])
 
   // ── Orientaciones ──────────────────────────────────────────────────
   const addOrientation = async (o: Omit<Orientation, 'id' | 'createdAt'>) => {
