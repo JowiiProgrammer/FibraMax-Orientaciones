@@ -38,9 +38,10 @@ export function OrientationForm({ open, onClose, onSave, existingOrientations, e
   const [notes, setNotes] = useState(editOrientation?.notes ?? '')
   const [error, setError] = useState('')
 
-  // En orientaciones completadas solo se permiten editar las notas (la valoración
-  // se edita aparte, desde el detalle). El resto de campos quedan en solo lectura.
-  const notesOnly = editOrientation?.status === 'completed'
+  // En orientaciones completadas solo se editan el tipo y las notas (la valoración
+  // se edita aparte, desde el detalle). Abonado, monitor, fecha y hora quedan en
+  // solo lectura, y se omite la validación de fecha pasada al guardar.
+  const restricted = editOrientation?.status === 'completed'
   const readDate = editOrientation
     ? (() => { try { return format(parseISO(editOrientation.date), "EEEE d 'de' MMMM yyyy", { locale: es }) } catch { return editOrientation.date } })()
     : ''
@@ -73,7 +74,7 @@ export function OrientationForm({ open, onClose, onSave, existingOrientations, e
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError('')
-    if (!notesOnly) {
+    if (!restricted) {
       if (!subscriberName.trim()) { setError('Introduce el nombre del abonado'); return }
       if (!monitorId) { setError('Selecciona un monitor'); return }
       if (date < today) { setError('La fecha no puede ser en el pasado'); return }
@@ -115,10 +116,10 @@ export function OrientationForm({ open, onClose, onSave, existingOrientations, e
         <div className="sticky top-0 bg-card border-b border-border px-5 py-4 flex items-center justify-between z-10">
           <div>
             <h2 className="font-display text-xl text-foreground">
-              {notesOnly ? 'EDITAR NOTAS' : editOrientation ? 'EDITAR ORIENTACIÓN' : 'NUEVA ORIENTACIÓN'}
+              {editOrientation ? 'EDITAR ORIENTACIÓN' : 'NUEVA ORIENTACIÓN'}
             </h2>
             <p className="text-xs text-muted-foreground mt-0.5">
-              {notesOnly ? 'Orientación completada' : 'Duración: 30 min + 5 min margen'}
+              {restricted ? 'Completada · edita tipo y notas' : 'Duración: 30 min + 5 min margen'}
             </p>
           </div>
           <button onClick={onClose} className="p-2 rounded-md hover:bg-accent text-muted-foreground">
@@ -128,16 +129,15 @@ export function OrientationForm({ open, onClose, onSave, existingOrientations, e
 
         <form onSubmit={handleSubmit} className="p-5 space-y-5">
 
-          {notesOnly ? (
+          {restricted ? (
             <div className="space-y-2">
               <div className="flex items-start gap-2 px-3 py-2.5 bg-info/10 border border-info/30 rounded-md text-xs text-info">
                 <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-                <span>Orientación completada: solo puedes editar las notas. La valoración se edita desde el detalle de la orientación.</span>
+                <span>Orientación completada: puedes editar el tipo y las notas. La valoración se edita desde el detalle de la orientación.</span>
               </div>
               <ReadField label="Abonado" value={editOrientation!.subscriberName} />
               <ReadField label="Monitor" value={`${editOrientation!.monitorName} · ${editOrientation!.centerShortCode}`} />
               <ReadField label="Fecha y hora" value={`${readDate} · ${editOrientation!.startTime}–${editOrientation!.endTime}`} />
-              <ReadField label="Tipo de orientación" value={SERVICE_CONFIG[editOrientation!.serviceType]?.label ?? editOrientation!.serviceType} />
             </div>
           ) : (
           <>
@@ -277,8 +277,10 @@ export function OrientationForm({ open, onClose, onSave, existingOrientations, e
             <Clock className="w-4 h-4 text-primary shrink-0" />
             <span>Fin: <span className="text-foreground font-medium">{endTime}</span> · 30 min + 5 margen</span>
           </div>
+          </>
+          )}
 
-          {/* Tipo de servicio */}
+          {/* Tipo de orientación — editable también en completadas */}
           <div className="space-y-2">
             <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
               Tipo de orientación
@@ -293,8 +295,6 @@ export function OrientationForm({ open, onClose, onSave, existingOrientations, e
               ))}
             </select>
           </div>
-          </>
-          )}
 
           {/* Notas */}
           <div className="space-y-2">
@@ -324,7 +324,7 @@ export function OrientationForm({ open, onClose, onSave, existingOrientations, e
               Cancelar
             </Button>
             <Button type="submit" className="flex-1">
-              {notesOnly ? 'Guardar notas' : editOrientation ? 'Guardar cambios' : 'Agendar orientación'}
+              {editOrientation ? 'Guardar cambios' : 'Agendar orientación'}
             </Button>
           </div>
         </form>
