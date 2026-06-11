@@ -9,6 +9,7 @@ import { MonitoresPage } from '@/pages/MonitoresPage'
 import { ReportePage } from '@/pages/ReportePage'
 import { SettingsPage } from '@/pages/SettingsPage'
 import { ActividadPage } from '@/pages/ActividadPage'
+import { MaterialPage } from '@/pages/MaterialPage'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -34,6 +35,7 @@ export default function App() {
               <Route path="/" element={<DashboardPage />} />
               <Route path="/orientaciones" element={<OrientationsPage />} />
               <Route path="/monitores" element={<MonitoresPage />} />
+              <Route path="/material" element={<MaterialPage />} />
               <Route path="/informes" element={<ReportePage />} />
               <Route path="/actividad" element={<ActividadPage />} />
               <Route path="/configuracion" element={<SettingsPage />} />

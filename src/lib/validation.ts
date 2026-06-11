@@ -56,6 +56,23 @@ export const centerSchema = z.object({
   shortCode: z.string().regex(SHORT_CODE_REGEX, 'Código inválido (2-3 letras mayúsculas)'),
 })
 
+// ── Material / Stock ───────────────────────────────────────────────
+export const materialSchema = z.object({
+  name: z.string().trim().min(1, 'El nombre es requerido').max(100, 'Nombre demasiado largo'),
+  centerId: uuidSchema,
+  category: z.string().trim().max(50).optional().nullable(),
+  expectedQty: z.number().int().min(0).max(1_000_000),
+  minQty: z.number().int().min(0).max(1_000_000),
+  unit: z.string().trim().max(20).optional().nullable(),
+})
+
+export const stockCountSchema = z.object({
+  materialId: uuidSchema,
+  countedQty: z.number().int().min(0).max(1_000_000),
+  countedAt: dateSchema,
+  note: z.string().max(500).optional().nullable(),
+})
+
 // ── Helper seguro para parsear ─────────────────────────────────────
 // Lanza error genérico — nunca expone qué campo falló al exterior
 export function validateOrThrow<T>(schema: z.ZodSchema<T>, data: unknown): T {

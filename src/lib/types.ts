@@ -86,6 +86,39 @@ export interface Tour {
   feedback?: Feedback | null
 }
 
+// ── Material / Stock ────────────────────────────────────────────────────
+export interface StockCount {
+  id: string
+  countedQty: number
+  countedAt: string   // YYYY-MM-DD
+  note?: string | null
+}
+
+export interface Material {
+  id: string
+  centerId: string
+  centerName: string
+  centerColor: string
+  centerShortCode: string
+  name: string
+  category?: string | null
+  expectedQty: number       // cuántas debería haber (stock objetivo)
+  minQty: number            // umbral para reponer
+  unit?: string | null      // "uds", "pares"…
+  counts: StockCount[]      // recuentos ordenados de más reciente a más antiguo
+  latest?: StockCount | null
+  previous?: StockCount | null
+}
+
+export type MaterialStatus = 'ok' | 'low' | 'missing' | 'never'
+
+export const MATERIAL_STATUS_CONFIG: Record<MaterialStatus, { label: string; className: string }> = {
+  ok:      { label: 'OK',           className: 'bg-success/20 text-success border border-success/30' },
+  low:     { label: 'Reponer',      className: 'bg-warning/15 text-warning border border-warning/30' },
+  missing: { label: 'Faltan',       className: 'bg-destructive/15 text-destructive border border-destructive/30' },
+  never:   { label: 'Sin recuento', className: 'bg-secondary/60 text-muted-foreground border border-border' },
+}
+
 export const SERVICE_CONFIG: Record<ServiceType, { label: string }> = {
   general: { label: 'Iniciación general' },
   advanced: { label: 'Nivel avanzado' },

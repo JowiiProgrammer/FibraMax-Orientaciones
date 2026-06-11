@@ -58,3 +58,28 @@ export interface DbTour {
   monitors?: DbMonitor & { centers?: DbCenter }
   tour_feedback?: DbFeedback | null
 }
+
+export interface DbStockCount {
+  id: string
+  material_id: string
+  counted_qty: number
+  counted_at: string
+  note: string | null
+  created_at: string
+}
+
+export interface DbMaterial {
+  id: string
+  center_id: string
+  name: string
+  category: string | null
+  expected_qty: number
+  min_qty: number
+  unit: string | null
+  is_active: boolean
+  created_at: string
+  updated_at: string
+  // Joins
+  centers?: DbCenter
+  stock_counts?: DbStockCount[]
+}
