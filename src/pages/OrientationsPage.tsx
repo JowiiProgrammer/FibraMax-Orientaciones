@@ -169,13 +169,18 @@ export function OrientationsPage() {
       )}
 
       {/* Modals */}
-      <OrientationForm
-        open={formOpen}
-        onClose={() => { setFormOpen(false); setEditOrientation(undefined) }}
-        onSave={handleSave}
-        existingOrientations={orientations}
-        editOrientation={editOrientation}
-      />
+      {/* key fuerza remontaje al abrir/cambiar de orientación, así el form
+          se precarga con los datos actuales (al editar) o vacío (al crear) */}
+      {formOpen && (
+        <OrientationForm
+          key={editOrientation?.id ?? 'new'}
+          open
+          onClose={() => { setFormOpen(false); setEditOrientation(undefined) }}
+          onSave={handleSave}
+          existingOrientations={orientations}
+          editOrientation={editOrientation}
+        />
+      )}
 
       <OrientationDetail
         orientation={detailOrientation}
